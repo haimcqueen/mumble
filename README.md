@@ -95,7 +95,7 @@ On first launch mumble will prompt you for three macOS permissions and walk you 
 ## Start automatically at login
 
 By default you re-launch mumble after a restart. To have it start on its own,
-install a login item — it preserves whatever mode you pass:
+install a login item, which preserves whatever mode you pass:
 
 ```bash
 ./dictate.sh --enable-autostart                          # push-to-talk
@@ -105,7 +105,7 @@ install a login item — it preserves whatever mode you pass:
 
 > **One-time catch:** the login item runs as a separate process from your
 > terminal, so on the *first* auto-launch macOS asks you to grant Microphone
-> and Accessibility once more (to a "Python" entry) — grant them and it sticks
+> and Accessibility once more (to a "Python" entry). Grant them and it sticks
 > for every login after. A future signed app will make this seamless.
 
 ## How it works
