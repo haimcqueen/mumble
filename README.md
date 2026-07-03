@@ -3,7 +3,7 @@
 <p align="center">
   <b>Private, local push-to-talk dictation for macOS.</b><br>
   Hold a key, speak, release. Your words appear in whatever app you're using.<br>
-  No cloud, no subscription, no account. Everything runs on your Mac.
+  No cloud, no subscription, no account, fully secure. Everything runs on your Mac. You own everything.
 </p>
 
 <p align="center">
