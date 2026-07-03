@@ -1,0 +1,22 @@
+# Python
+.venv/
+__pycache__/
+*.pyc
+*.egg-info/
+
+# Build artifacts
+build/
+dist/
+*.dmg
+dmg-staging/
+
+# Models are downloaded on first run, never committed
+models/
+*.mlpackage
+
+# macOS
+.DS_Store
+
+# Scratch / logs
+*.log
+scratchpad/

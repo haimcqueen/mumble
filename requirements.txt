@@ -1,0 +1,12 @@
+# Speech-to-text (Apple Silicon, runs on the Neural Engine via MLX)
+parakeet-mlx
+
+# Audio capture
+sounddevice
+numpy
+
+# macOS system integration (event taps, pasteboard, audio devices, overlay)
+pyobjc-framework-Quartz
+pyobjc-framework-Cocoa
+pyobjc-framework-ApplicationServices
+pyobjc-framework-AVFoundation
