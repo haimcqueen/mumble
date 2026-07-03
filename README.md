@@ -18,7 +18,8 @@
 
 mumble is a free, open-source alternative to Wispr Flow, Willow Voice, and superwhisper. It uses NVIDIA's **Parakeet** speech model running on Apple Silicon's Neural Engine for near-instant transcription, and an optional local LLM to clean up your rambling into polished text, all without a single byte leaving your machine.
 
-Built for Apple Silicon (M1 or newer). **$0 forever.**
+Built for Apple Silicon (M1 or newer). 
+**$0 forever.**
 
 ## Features
 
