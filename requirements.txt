@@ -1,6 +1,11 @@
 # Speech-to-text (Apple Silicon, runs on the Neural Engine via MLX)
 parakeet-mlx
 
+# Pin a modern numba/llvmlite: parakeet-mlx pulls in librosa -> numba, and
+# without this floor the resolver backtracks to numba 0.53.1 (2021, Python
+# <3.10 only), which fails to build on Python 3.12.
+numba>=0.60
+
 # Audio capture
 sounddevice
 numpy
