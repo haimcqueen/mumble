@@ -64,7 +64,7 @@ CLEAN_PROMPT = (
 class Recorder:
     """Always-warm microphone stream with a pre-roll ring buffer."""
 
-    def __init__(self):
+    def __init__(self, level_sink=None):
         import sounddevice as sd
         self._lock = threading.Lock()
         self._recording = False
@@ -72,6 +72,7 @@ class Recorder:
         self._preroll_samples = 0
         self._chunks = []
         self.level = 0.0            # live mic RMS, read by the HUD
+        self.level_sink = level_sink
         self.last_voice = 0.0       # when we last heard speech
         self.speech_started = False
         self._stream = sd.InputStream(
@@ -79,9 +80,18 @@ class Recorder:
             blocksize=1024, callback=self._callback)
         self._stream.start()
 
+    def close(self):
+        try:
+            self._stream.stop()
+            self._stream.close()
+        except Exception:
+            pass
+
     def _callback(self, indata, frames, time_info, status):
         block = indata[:, 0].copy()
         self.level = float(np.sqrt(np.mean(block ** 2)))
+        if self.level_sink is not None:
+            self.level_sink.level = self.level
         with self._lock:
             if self._recording:
                 if self.level > VOICE_RMS:
@@ -687,11 +697,22 @@ class WakeListener:
 
         self._sd = sd
         self._stream = None
+        self._running = True
         self._open_stream()
         threading.Thread(target=self._worker, daemon=True).start()
         threading.Thread(target=self._device_watch, daemon=True).start()
         if inactivity:
             threading.Thread(target=self._idle_watch, daemon=True).start()
+
+    def close(self):
+        self._running = False
+        try:
+            self._stream.stop()
+            self._stream.close()
+        except Exception:
+            pass
+        self._q.put(None)                 # unblock the worker so it can exit
+        self.hud.hide()
 
     def _open_stream(self):
         self._active = False
@@ -724,8 +745,10 @@ class WakeListener:
     def _device_watch(self):
         """Follow the system default mic: reopen on AirPods connect/remove."""
         current = self._default_input_name()
-        while True:
+        while self._running:
             time.sleep(2.0)
+            if not self._running:
+                return
             name = self._default_input_name()
             if name and name != current:
                 current = name
@@ -776,8 +799,10 @@ class WakeListener:
             self._q.put(seg)
 
     def _worker(self):
-        while True:
+        while self._running:
             seg = self._q.get()
+            if seg is None or not self._running:      # shutdown sentinel
+                return
             try:
                 text = self.transcriber.transcribe(seg)
             except Exception as e:
@@ -824,7 +849,7 @@ class WakeListener:
         print(f"▸ {out}", flush=True)
 
     def _idle_watch(self):
-        while True:
+        while self._running:
             time.sleep(1.0)
             if (self.dictating
                     and time.time() - self._last_activity > self.inactivity):
@@ -1049,18 +1074,28 @@ def ensure_permissions(needed=("microphone", "input monitoring",
 
 
 def preflight(keycode):
-    if keycode == KEYCODE_FN:
-        try:
-            out = subprocess.run(
-                ["defaults", "read", "com.apple.HIToolbox", "AppleFnUsageType"],
-                capture_output=True, text=True)
-            if out.returncode == 0 and out.stdout.strip() not in ("0", ""):
-                print('NOTE: the 🌐/Fn key is bound to a system action. Set '
-                      '"Press 🌐 key to" = "Do Nothing" in System Settings > '
-                      "Keyboard to avoid the emoji picker / Apple dictation "
-                      "popping up.", flush=True)
-        except Exception:
-            pass
+    if keycode != KEYCODE_FN:
+        return
+    # The 🌐/Fn key is, by default, bound to a system action — switching input
+    # source (US ↔ ABC), the emoji picker, or Apple Dictation. Any of these
+    # fires alongside push-to-talk. The default value is often unset yet still
+    # active (e.g. input-source switching when you have 2+ layouts), so advise
+    # unconditionally rather than trusting the read.
+    bound = True
+    try:
+        out = subprocess.run(
+            ["defaults", "read", "com.apple.HIToolbox", "AppleFnUsageType"],
+            capture_output=True, text=True)
+        if out.returncode == 0 and out.stdout.strip() == "0":
+            bound = False           # explicitly "Do Nothing" — all good
+    except Exception:
+        pass
+    if bound:
+        print("TIP: if pressing Fn switches your keyboard layout, opens the "
+              "emoji picker, or starts Apple Dictation, set System Settings → "
+              "Keyboard → \"Press 🌐 key to\" = \"Do Nothing\". Or just use "
+              "Hands-free mode from the menu-bar icon — it needs no keys.",
+              flush=True)
 
 
 def run_wake_mode(args):
@@ -1229,6 +1264,250 @@ def disable_autostart():
         print("autostart wasn't enabled.")
 
 
+def _settings_path():
+    return Path(__file__).resolve().parent / "settings.json"
+
+
+def load_settings():
+    import json
+    try:
+        return json.loads(_settings_path().read_text())
+    except Exception:
+        return {}
+
+
+def save_settings(d):
+    import json
+    try:
+        _settings_path().write_text(json.dumps(d, indent=2))
+    except Exception:
+        pass
+
+
+_menu_target_cls = None
+
+
+def _make_menu_target(app):
+    """Build (once) an NSObject that receives menu clicks and forwards them."""
+    global _menu_target_cls
+    if _menu_target_cls is None:
+        import objc
+        from Foundation import NSObject
+
+        class _MenuTarget(NSObject):
+            def initWithApp_(self, a):
+                self = objc.super(_MenuTarget, self).init()
+                if self is None:
+                    return None
+                self._app = a
+                return self
+
+            def pickPTT_(self, sender):
+                self._app.set_mode("ptt")
+
+            def pickWake_(self, sender):
+                self._app.set_mode("wake")
+
+            def toggleMode_(self, sender):
+                self._app.toggle_mode()
+
+            def toggleLogin_(self, sender):
+                self._app.toggle_login()
+
+            def quit_(self, sender):
+                from AppKit import NSApplication
+                NSApplication.sharedApplication().terminate_(None)
+
+        _menu_target_cls = _MenuTarget
+    return _menu_target_cls.alloc().initWithApp_(app)
+
+
+class StatusBar:
+    """Menu-bar icon + menu to switch modes, toggle login, and quit."""
+
+    ICON = {"ptt": "🎙", "wake": "👂"}
+
+    def __init__(self, app):
+        from AppKit import NSStatusBar, NSMenu, NSMenuItem
+        self.app = app
+        self._Item = NSMenuItem
+        bar = NSStatusBar.systemStatusBar()
+        self.item = bar.statusItemWithLength_(-1.0)   # NSVariableStatusItemLength
+        self.menu = NSMenu.alloc().init()
+        self.item.setMenu_(self.menu)
+        # keep a strong ref to the target so selectors resolve
+        self._target = _make_menu_target(app)
+        self.rebuild()
+
+    def _add(self, title, sel, key="", on=False, enabled=True):
+        it = self._Item.alloc().initWithTitle_action_keyEquivalent_(
+            title, sel, key)
+        it.setTarget_(self._target)
+        it.setState_(1 if on else 0)
+        it.setEnabled_(enabled)
+        self.menu.addItem_(it)
+        return it
+
+    def rebuild(self):
+        from AppKit import NSMenuItem
+        self.menu.removeAllItems()
+        m = self.app.mode
+        self._add(f"mumble — {'push-to-talk' if m=='ptt' else 'hands-free'}",
+                  None, enabled=False)
+        self.menu.addItem_(NSMenuItem.separatorItem())
+        self._add("Push-to-talk (hold Fn)", "pickPTT:", on=(m == "ptt"))
+        self._add("Hands-free (say the wake phrase)", "pickWake:",
+                  on=(m == "wake"))
+        self._add("Switch mode", "toggleMode:", key="d")   # ⌘⇧ added below
+        self.menu.itemAtIndex_(self.menu.numberOfItems() - 1
+                               ).setKeyEquivalentModifierMask_((1 << 20) |
+                                                               (1 << 17))
+        self.menu.addItem_(NSMenuItem.separatorItem())
+        self._add("Start at login", "toggleLogin:",
+                  on=_autostart_plist_path().exists())
+        self._add("Quit mumble", "quit:", key="q")
+        self.item.setTitle_(self.ICON.get(m, "🎙"))
+
+    def refresh(self):
+        from PyObjCTools import AppHelper
+        AppHelper.callAfter(self.rebuild)
+
+
+class App:
+    """Owns the loaded model + I/O and switches between modes live."""
+
+    def __init__(self, args, clean_model):
+        import types
+        self.args = args
+        self.keycode = KEYCODE_FN if args.key == "fn" else KEYCODE_RCMD
+        self.clean_model = clean_model
+        self.level = types.SimpleNamespace(level=0.0)
+        self.transcriber = Transcriber(args.model)
+        self.inserter = Inserter()
+        self.cues = Cues(enabled=not args.no_sound)
+        self.hud = NoHUD() if args.no_hud else HUD(self.level)
+        self.recorder = None
+        self.controller = None
+        self.wake = None
+        s = load_settings()
+        self.mode = s.get("mode", "wake" if args.wake else "ptt")
+        self.status = None
+
+    # ---- mode lifecycle -------------------------------------------------
+    def set_mode(self, mode, initial=False):
+        if mode not in ("ptt", "wake"):
+            return
+        if not initial and mode == self.mode:
+            return
+        # tear down whatever's running
+        if self.wake:
+            self.wake.close()
+            self.wake = None
+        if self.recorder:
+            self.recorder.close()
+            self.recorder = None
+            self.controller = None
+        self.mode = mode
+        if mode == "ptt":
+            self.recorder = Recorder(level_sink=self.level)
+            self.controller = Controller(
+                self.recorder, self.transcriber, self.inserter, self.hud,
+                self.clean_model, self.args.silence, self.cues)
+            key_name = "Fn" if self.keycode == KEYCODE_FN else "right-⌘"
+            self.hud.flash(f"push-to-talk — hold {key_name}", seconds=2.0)
+            print(f"\n▶ mode: push-to-talk (hold {key_name})", flush=True)
+        else:
+            wake = self.args.wake or "start dictation"
+            self.wake = WakeListener(
+                self.transcriber, self.inserter, self.cues, self.hud,
+                self.clean_model, wake, self.args.stop_phrase,
+                self.args.wake_timeout, level_sink=self.level)
+            self.hud.flash(f"hands-free — say “{wake}”", seconds=2.0)
+            print(f"\n▶ mode: hands-free (say “{wake}”)", flush=True)
+        d = load_settings()
+        d["mode"] = mode
+        save_settings(d)
+        if self.status:
+            self.status.refresh()
+
+    def toggle_mode(self):
+        self.set_mode("wake" if self.mode == "ptt" else "ptt")
+
+    def toggle_login(self):
+        if _autostart_plist_path().exists():
+            disable_autostart()
+        else:
+            if self.mode == "wake" and not self.args.wake:
+                self.args.wake = "start dictation"
+            enable_autostart(self.args)
+        if self.status:
+            self.status.refresh()
+
+    # ---- global key tap -------------------------------------------------
+    def install_tap(self):
+        import Quartz
+        flag_for_key = {
+            KEYCODE_FN: Quartz.kCGEventFlagMaskSecondaryFn,
+            KEYCODE_RCMD: Quartz.kCGEventFlagMaskCommand,
+        }
+        watch_flag = flag_for_key[self.keycode]
+        holder = {}
+        KEYCODE_D = 2
+        cmd_shift = (Quartz.kCGEventFlagMaskCommand
+                     | Quartz.kCGEventFlagMaskShift)
+
+        def cb(proxy, type_, event, refcon):
+            if type_ in (Quartz.kCGEventTapDisabledByTimeout,
+                         Quartz.kCGEventTapDisabledByUserInput):
+                Quartz.CGEventTapEnable(holder["tap"], True)
+                return event
+            code = Quartz.CGEventGetIntegerValueField(
+                event, Quartz.kCGKeyboardEventKeycode)
+            flags = Quartz.CGEventGetFlags(event)
+            # ⌘⇧D toggles mode, globally
+            if (type_ == Quartz.kCGEventKeyDown and code == KEYCODE_D
+                    and (flags & cmd_shift) == cmd_shift):
+                from PyObjCTools import AppHelper
+                AppHelper.callAfter(self.toggle_mode)
+                return event
+            # push-to-talk key only matters in ptt mode
+            if (self.mode == "ptt" and self.controller
+                    and type_ == Quartz.kCGEventFlagsChanged
+                    and code == self.keycode):
+                down = bool(flags & watch_flag)
+                (self.controller.on_key_down() if down
+                 else self.controller.on_key_up())
+            elif (self.mode == "ptt" and self.controller
+                  and type_ == Quartz.kCGEventKeyDown and code == KEYCODE_ESC):
+                self.controller.on_cancel()
+            return event
+
+        mask = (Quartz.CGEventMaskBit(Quartz.kCGEventFlagsChanged)
+                | Quartz.CGEventMaskBit(Quartz.kCGEventKeyDown))
+        tap = Quartz.CGEventTapCreate(
+            Quartz.kCGSessionEventTap, Quartz.kCGHeadInsertEventTap,
+            Quartz.kCGEventTapOptionListenOnly, mask, cb, None)
+        if tap is None:
+            sys.exit(
+                "\nERROR: could not create the keyboard event tap.\n"
+                "Grant *Input Monitoring* to your terminal app, then reopen "
+                "it and run this again.")
+        holder["tap"] = tap
+        src = Quartz.CFMachPortCreateRunLoopSource(None, tap, 0)
+        Quartz.CFRunLoopAddSource(
+            Quartz.CFRunLoopGetCurrent(), src, Quartz.kCFRunLoopCommonModes)
+        Quartz.CGEventTapEnable(tap, True)
+
+    def run(self):
+        self.status = StatusBar(self)
+        self.install_tap()
+        self.set_mode(self.mode, initial=True)
+        print("        Menu-bar icon ▸ switch modes · ⌘⇧D toggles · "
+              "Ctrl-C quits.", flush=True)
+        from AppKit import NSApplication
+        NSApplication.sharedApplication().run()
+
+
 def main():
     # Default OS handling for Ctrl-C: the CFRunLoop (and stalled network
     # calls) never hand control back to Python, so a Python-level SIGINT
@@ -1314,17 +1593,8 @@ def main():
         sys.exit("another dictate.py is already running: quit it first "
                  "(Ctrl-C in its terminal), or use that one.")
 
-    if args.wake:             # always-listen, hands-free, no keys
-        run_wake_mode(args)
-        return
-
     ensure_permissions()      # surface all TCC prompts immediately at spawn
     preflight(keycode)
-    transcriber = Transcriber(args.model)
-    recorder = Recorder()
-    inserter = Inserter()
-    hud = NoHUD() if args.no_hud else HUD(recorder)
-    cues = Cues(enabled=not args.no_sound)
     clean_model = None if args.raw else args.clean_model
     if clean_model and not cleanup_available(clean_model):
         print(f"NOTE: cleanup model '{clean_model}' isn't reachable via "
@@ -1332,31 +1602,12 @@ def main():
               f"Ollama (`ollama serve`) and `ollama pull {clean_model}` to "
               f"enable cleanup, or pass --raw to silence this.", flush=True)
         clean_model = None
-    controller = Controller(recorder, transcriber, inserter, hud,
-                            clean_model, args.silence, cues)
 
-    # AirPods stem control is OFF by default: macOS captures the AirPods Pro
-    # stem squeeze for its own mic/call control and never delivers it to us
-    # as a media key (confirmed by testing: you just get "Cannot Control
-    # Mic" popups). --airpods still forces the attempt for experimentation.
-    if args.airpods is True:
-        airpods_mode = "on"
-    else:
-        airpods_mode = "off"
-
-    mode = f"clean ({clean_model})" if clean_model else "raw"
-    key_name = "Fn" if args.key == "fn" else "Right-Command"
-    print(f"\nready [{mode}]: hold {key_name} and speak, release to insert."
-          f"\n        double-tap {key_name} for hands-free (stops after "
-          f"{args.silence:.0f}s of silence or another tap).", flush=True)
-    if airpods_mode != "off":
-        detected = airpods_mode == "on" or airpods_connected()
-        print(f"        AirPods stem control: {airpods_mode}"
-              + (". AirPods detected, squeeze a stem to dictate."
-                 if detected else ". Will activate when AirPods connect."),
-              flush=True)
-    print("        Esc cancels. Ctrl-C quits.", flush=True)
-    run_event_loop(controller, keycode, airpods_mode=airpods_mode)
+    app = App(args, clean_model)
+    mode_label = f"clean ({clean_model})" if clean_model else "raw"
+    print(f"\nready [{mode_label}] — pick Push-to-talk or Hands-free from the "
+          f"mumble menu-bar icon (🎙/👂).", flush=True)
+    app.run()
 
 
 if __name__ == "__main__":

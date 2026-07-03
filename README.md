@@ -74,6 +74,14 @@ On first launch mumble will prompt you for three macOS permissions and walk you 
 
 **Wake-word (no keyboard):** Run with `--wake "start dictation"`. Say your wake phrase, dictate, then say *"stop dictation"*. Perfect for pacing around while you think.
 
+### Menu-bar icon & switching modes
+
+While running, mumble lives in your menu bar (🎙 push-to-talk / 👂 hands-free).
+Click it to switch between **Push-to-talk** and **Hands-free** any time — no
+restart, the model stays loaded — or toggle **Start at login** and quit. The
+global shortcut **⌘⇧D** flips modes from anywhere. Your choice is remembered
+across restarts.
+
 <details>
 <summary><b>All options</b></summary>
 
