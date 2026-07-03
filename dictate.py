@@ -942,10 +942,26 @@ _SETTINGS_PANE = {
 }
 
 
+def _ax_trusted_fresh():
+    """Accessibility status read in a fresh subprocess.
+
+    AXIsProcessTrusted() caches its result for the lifetime of a process, so
+    a grant made *after* launch is never seen by the running process — the
+    onboarding poll would loop forever. A short-lived child reads the current
+    TCC state each time, so the poll actually notices the grant."""
+    code = ("from ApplicationServices import AXIsProcessTrusted;"
+            "import sys; sys.exit(0 if AXIsProcessTrusted() else 1)")
+    try:
+        return subprocess.run([sys.executable, "-c", code],
+                              timeout=5).returncode == 0
+    except Exception:
+        from ApplicationServices import AXIsProcessTrusted
+        return bool(AXIsProcessTrusted())
+
+
 def _perm_status():
     """Return {permission: granted_bool} for the three TCC permissions."""
     import ctypes
-    from ApplicationServices import AXIsProcessTrusted
     from AVFoundation import AVCaptureDevice, AVMediaTypeAudio
     iokit = ctypes.cdll.LoadLibrary(
         "/System/Library/Frameworks/IOKit.framework/IOKit")
@@ -956,7 +972,7 @@ def _perm_status():
                 AVMediaTypeAudio) == 3,          # AVAuthorizationStatusAuthorized
         "input monitoring":
             iokit.IOHIDCheckAccess(1) == 0,      # ListenEvent -> Granted
-        "accessibility": bool(AXIsProcessTrusted()),
+        "accessibility": _ax_trusted_fresh(),
     }
 
 
@@ -994,7 +1010,9 @@ def ensure_permissions(needed=("microphone", "input monitoring",
     if not missing:
         return
 
-    needed_restart = "input monitoring" in missing
+    # Both Input Monitoring and Accessibility are only honored by a freshly
+    # launched process, so restart once they're granted.
+    needed_restart = bool({"input monitoring", "accessibility"} & set(missing))
     print("── permission setup ─────────────────────────────────")
     print("This app needs: " + ", ".join(needed) + ".")
     print("Approve the dialogs that just appeared; for Accessibility / "
@@ -1026,7 +1044,7 @@ def ensure_permissions(needed=("microphone", "input monitoring",
         time.sleep(1.0)
 
     if needed_restart:
-        print("restarting to pick up the Input Monitoring grant ...\n")
+        print("restarting to pick up the new permissions ...\n")
         os.execv(sys.executable, [sys.executable] + sys.argv)
 
 
