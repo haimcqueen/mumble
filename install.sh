@@ -1,14 +1,14 @@
 #!/bin/zsh
-# Murmur installer — sets up a local Python environment and pre-downloads
+# Mumble installer — sets up a local Python environment and pre-downloads
 # the speech model so the first real launch is instant.
 set -e
 cd "$(dirname "$0")"
 
-echo "── Murmur installer ─────────────────────────────────"
+echo "── Mumble installer ─────────────────────────────────"
 
 # 1. Apple Silicon check (Parakeet runs on the Neural Engine via MLX)
 if [[ "$(uname -m)" != "arm64" ]]; then
-  echo "ERROR: Murmur needs an Apple Silicon Mac (M1 or newer)." >&2
+  echo "ERROR: Mumble needs an Apple Silicon Mac (M1 or newer)." >&2
   exit 1
 fi
 
@@ -50,10 +50,10 @@ if command -v ollama >/dev/null 2>&1; then
     echo "✓ Ollama is running — transcript cleanup will be enabled"
   else
     echo "· Ollama installed but not running — start it (or open the Ollama"
-    echo "  app) to enable transcript cleanup. Murmur works without it."
+    echo "  app) to enable transcript cleanup. Mumble works without it."
   fi
 else
-  echo "· Ollama not found — Murmur will insert raw transcripts."
+  echo "· Ollama not found — Mumble will insert raw transcripts."
   echo "  For automatic cleanup:  brew install ollama && ollama pull qwen2.5:7b"
 fi
 

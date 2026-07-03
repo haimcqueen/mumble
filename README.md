@@ -1,4 +1,4 @@
-<h1 align="center">Murmur</h1>
+<h1 align="center">Mumble</h1>
 
 <p align="center">
   <b>Private, local push-to-talk dictation for macOS.</b><br>
@@ -16,7 +16,7 @@
 
 ---
 
-Murmur is a free, open-source alternative to Wispr Flow, Willow Voice, and superwhisper. It uses NVIDIA's **Parakeet** speech model running on Apple Silicon's Neural Engine for near-instant transcription, and an optional local LLM to clean up your rambling into polished text — all without a single byte leaving your machine.
+Mumble is a free, open-source alternative to Wispr Flow, Willow Voice, and superwhisper. It uses NVIDIA's **Parakeet** speech model running on Apple Silicon's Neural Engine for near-instant transcription, and an optional local LLM to clean up your rambling into polished text — all without a single byte leaving your machine.
 
 Built for Apple Silicon (M1 or newer). **$0 forever.**
 
@@ -36,8 +36,8 @@ Built for Apple Silicon (M1 or newer). **$0 forever.**
 **Requirements:** Apple Silicon Mac (M1+), macOS 14+, [Python 3.10+](https://www.python.org/), and [Ollama](https://ollama.com) (optional, for cleanup).
 
 ```bash
-git clone https://github.com/haimcqueen/murmur.git
-cd murmur
+git clone https://github.com/haimcqueen/mumble.git
+cd mumble
 ./install.sh
 ```
 
@@ -54,7 +54,7 @@ Then run it:
 ./dictate.sh
 ```
 
-On first launch Murmur will prompt you for three macOS permissions and walk you through granting them (see [Permissions](#permissions)).
+On first launch Mumble will prompt you for three macOS permissions and walk you through granting them (see [Permissions](#permissions)).
 
 ## Usage
 
@@ -113,7 +113,7 @@ On first launch Murmur will prompt you for three macOS permissions and walk you 
 
 ## Permissions
 
-macOS requires three permissions, granted to the app that runs Murmur (your Terminal, or the bundled app). Murmur fires all the prompts on first launch and shows live status while you grant them:
+macOS requires three permissions, granted to the app that runs Mumble (your Terminal, or the bundled app). Mumble fires all the prompts on first launch and shows live status while you grant them:
 
 | Permission | Why |
 |---|---|
@@ -127,14 +127,14 @@ Wake-word mode (`--wake`) needs only Microphone + Accessibility.
 
 ## Privacy
 
-Murmur makes **zero network connections** during use. The speech model is downloaded once from Hugging Face at install time; after that, your audio and text never leave the machine. There's no telemetry, no analytics, and no account. Read the ~1,000 lines of `dictate.py` yourself — that's the whole thing.
+Mumble makes **zero network connections** during use. The speech model is downloaded once from Hugging Face at install time; after that, your audio and text never leave the machine. There's no telemetry, no analytics, and no account. Read the ~1,000 lines of `dictate.py` yourself — that's the whole thing.
 
 ## Limitations
 
 - **Apple Silicon only.** Parakeet-mlx needs the Neural Engine. Intel Macs aren't supported.
 - **The AirPods stem can't trigger dictation.** macOS reserves the AirPods Pro stem squeeze for its own mic/call control and never delivers it to third-party apps. Use AirPods for the *mic*; trigger with the keyboard or a wake word. (The AirPods *stem-as-button* feature is a macOS limitation, not a bug here — [details](#).)
-- **Not on the Mac App Store.** Global key detection is incompatible with the App Store sandbox, so Murmur is distributed directly. This is normal for this class of app.
-- **Cleanup needs Ollama running.** Without it, Murmur inserts the raw transcript and tells you so.
+- **Not on the Mac App Store.** Global key detection is incompatible with the App Store sandbox, so Mumble is distributed directly. This is normal for this class of app.
+- **Cleanup needs Ollama running.** Without it, Mumble inserts the raw transcript and tells you so.
 
 ## Roadmap
 
