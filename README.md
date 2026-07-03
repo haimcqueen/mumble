@@ -57,6 +57,8 @@ Then run it:
 
 On first launch mumble will prompt you for three macOS permissions and walk you through granting them (see [Permissions](#permissions)).
 
+> **Using a coding agent?** Just point it at this repo and ask it to set mumble up. Between `install.sh` and [ARCHITECTURE.md](ARCHITECTURE.md), it has everything it needs to install, configure, and run it for you.
+
 ## Usage
 
 ```bash
@@ -89,6 +91,22 @@ On first launch mumble will prompt you for three macOS permissions and walk you 
 | `--test AUDIO.wav` | Transcribe an audio file and exit (no mic needed) |
 
 </details>
+
+## Start automatically at login
+
+By default you re-launch mumble after a restart. To have it start on its own,
+install a login item — it preserves whatever mode you pass:
+
+```bash
+./dictate.sh --enable-autostart                          # push-to-talk
+./dictate.sh --enable-autostart --wake "start dictation" # hands-free
+./dictate.sh --disable-autostart                         # turn it off
+```
+
+> **One-time catch:** the login item runs as a separate process from your
+> terminal, so on the *first* auto-launch macOS asks you to grant Microphone
+> and Accessibility once more (to a "Python" entry) — grant them and it sticks
+> for every login after. A future signed app will make this seamless.
 
 ## How it works
 

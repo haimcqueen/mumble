@@ -1156,6 +1156,79 @@ def hud_test():
           "then a live waveform, then a ripple.")
 
 
+AUTOSTART_LABEL = "com.haimcqueen.mumble"
+
+
+def _autostart_plist_path():
+    return (Path.home() / "Library" / "LaunchAgents"
+            / f"{AUTOSTART_LABEL}.plist")
+
+
+def _autostart_run_args(args):
+    """Preserve how the user runs it (mode/flags) in the login item."""
+    run_args = []
+    if args.raw:
+        run_args.append("--raw")
+    if args.key != "fn":
+        run_args += ["--key", args.key]
+    if args.no_hud:
+        run_args.append("--no-hud")
+    if args.no_sound:
+        run_args.append("--no-sound")
+    if args.wake:
+        run_args += ["--wake", args.wake, "--stop-phrase", args.stop_phrase,
+                     "--wake-timeout", str(args.wake_timeout)]
+    return run_args
+
+
+def enable_autostart(args):
+    import plistlib
+    script = str(Path(__file__).resolve())
+    workdir = str(Path(__file__).resolve().parent)
+    logs = Path.home() / "Library" / "Logs"
+    logs.mkdir(parents=True, exist_ok=True)
+    plist = {
+        "Label": AUTOSTART_LABEL,
+        "ProgramArguments": [sys.executable, script, *_autostart_run_args(args)],
+        "WorkingDirectory": workdir,
+        "RunAtLoad": True,
+        "KeepAlive": False,               # start at login; don't respawn on quit
+        "ProcessType": "Interactive",
+        "StandardOutPath": str(logs / "mumble.log"),
+        "StandardErrorPath": str(logs / "mumble.log"),
+    }
+    path = _autostart_plist_path()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with open(path, "wb") as f:
+        plistlib.dump(plist, f)
+    subprocess.run(["launchctl", "unload", str(path)], capture_output=True)
+    r = subprocess.run(["launchctl", "load", "-w", str(path)],
+                       capture_output=True, text=True)
+    if r.returncode == 0:
+        mode = "wake-word" if args.wake else "push-to-talk"
+        print(f"✓ autostart enabled ({mode}) — mumble will launch "
+              f"automatically at login.")
+        print(f"  LaunchAgent: {path}")
+        print(f"  Logs:        {logs / 'mumble.log'}")
+        print("  On the first auto-launch macOS may ask for the three "
+              "permissions once more (the login item is a new process); grant "
+              "them and it sticks for good.")
+        print("  Disable anytime with:  ./dictate.sh --disable-autostart")
+    else:
+        print(f"could not load the LaunchAgent: {r.stderr.strip()}")
+
+
+def disable_autostart():
+    path = _autostart_plist_path()
+    if path.exists():
+        subprocess.run(["launchctl", "unload", "-w", str(path)],
+                       capture_output=True)
+        path.unlink()
+        print("✓ autostart disabled — mumble will no longer start at login.")
+    else:
+        print("autostart wasn't enabled.")
+
+
 def main():
     # Default OS handling for Ctrl-C: the CFRunLoop (and stalled network
     # calls) never hand control back to Python, so a Python-level SIGINT
@@ -1195,12 +1268,24 @@ def main():
     ap.add_argument("--wake-timeout", type=float, default=45.0, metavar="SEC",
                     help="in --wake mode, auto-stop dictating after this "
                          "many seconds of silence (default 45)")
+    ap.add_argument("--enable-autostart", action="store_true",
+                    help="start mumble automatically at login, preserving the "
+                         "other flags you pass (e.g. --wake ...)")
+    ap.add_argument("--disable-autostart", action="store_true",
+                    help="stop starting mumble at login")
     ap.add_argument("--test", metavar="AUDIO",
                     help="transcribe an audio file and exit")
     ap.add_argument("--hud-test", action="store_true",
                     help="show the HUD for 6s with a fake waveform, print "
                          "window diagnostics, and exit")
     args = ap.parse_args()
+
+    if args.disable_autostart:
+        disable_autostart()
+        return
+    if args.enable_autostart:
+        enable_autostart(args)
+        return
 
     if args.hud_test:
         hud_test()
