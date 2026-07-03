@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-probe_stem.py — does an AirPods stem squeeze reach us as a media key?
+probe_stem.py: does an AirPods stem squeeze reach us as a media key?
 
 This is the go/no-go test for "Option B". It opens NO microphone, so your
 AirPods stay in normal music (A2DP) mode rather than call mode. It installs
@@ -51,7 +51,7 @@ def main():
                 print(f"  ✅ media key: {name:12s} {edge}   "
                       f"(#{seen['count']})", flush=True)
                 if key == 16 and edge == "down":
-                    print("     ^ THIS is the AirPods stem squeeze — Option B "
+                    print("     ^ THIS is the AirPods stem squeeze. Option B "
                           "is VIABLE. Swallowing it so music won't toggle.",
                           flush=True)
                 if key == 16:
@@ -73,7 +73,7 @@ def main():
         Quartz.CFRunLoopGetCurrent(), src, Quartz.kCFRunLoopCommonModes)
     Quartz.CGEventTapEnable(tap, True)
 
-    print("probe ready — NO microphone is open.")
+    print("probe ready: NO microphone is open.")
     print("Pause any music, then squeeze an AirPod stem a few times.")
     print("Watching for media keys (Ctrl-C to quit)...\n", flush=True)
     Quartz.CFRunLoopRun()

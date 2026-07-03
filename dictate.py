@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-dictate.py — fully local push-to-talk dictation for macOS.
+dictate.py: fully local push-to-talk dictation for macOS.
 
 Hold Fn, speak, release: the transcript is inserted at the cursor of the
 frontmost app. Press Esc while holding to cancel. Everything runs on-device
@@ -130,7 +130,7 @@ def write_wav(path: str, audio: np.ndarray):
 class Transcriber:
     def __init__(self, model_name: str):
         import os
-        # If the model is already cached, skip HF's online update check —
+        # If the model is already cached, skip HF's online update check:
         # it can hang for minutes when rate-limited.
         cache = (Path.home() / ".cache/huggingface/hub"
                  / ("models--" + model_name.replace("/", "--")))
@@ -254,7 +254,7 @@ class Inserter:
 
 class HUD:
     """A small black pill at the top-center of the active screen with live
-    waveform bars — inspired by FreeFlow's overlay. Three looks:
+    waveform bars, inspired by FreeFlow's overlay. Three looks:
       listening() live mic waveform · processing() gentle ripple ·
       flash(text) a brief text message. All are thread-safe.
     """
@@ -512,7 +512,7 @@ class Controller:
                 self._last_tap = 0.0
                 self.hud.listening()
                 self.cues.play("start")
-                print("\n● hands-free — tap Fn to stop, or just stop "
+                print("\n● hands-free, tap Fn to stop, or just stop "
                       "talking", flush=True)
                 threading.Thread(target=self._silence_watch,
                                  daemon=True).start()
@@ -537,7 +537,7 @@ class Controller:
             self._stop_locked(cancel=False)
 
     def toggle_handsfree(self):
-        """Start/stop hands-free dictation — bound to the AirPods stem press
+        """Start/stop hands-free dictation, bound to the AirPods stem press
         (a discrete tap, so it toggles rather than holds)."""
         with self._lock:
             if self.state == "idle":
@@ -545,7 +545,7 @@ class Controller:
                 self.state = "handsfree"
                 self.hud.listening()
                 self.cues.play("start")
-                print("\n● hands-free (AirPods) — press again to stop, or "
+                print("\n● hands-free (AirPods), press again to stop, or "
                       "just stop talking", flush=True)
                 threading.Thread(target=self._silence_watch,
                                  daemon=True).start()
@@ -585,13 +585,13 @@ class Controller:
                 now = time.time()
                 if (self.recorder.speech_started
                         and now - self.recorder.last_voice > self.silence_sec):
-                    print(f"  ({self.silence_sec:.0f}s of silence — done)",
+                    print(f"  ({self.silence_sec:.0f}s of silence: done)",
                           flush=True)
                     self._stop_locked(cancel=False)
                     return
                 if (not self.recorder.speech_started
                         and now - started > NO_SPEECH_CANCEL_SEC):
-                    print("  (heard nothing — cancelled)", flush=True)
+                    print("  (heard nothing: cancelled)", flush=True)
                     self._stop_locked(cancel=True)
                     return
                 if now - started > MAX_RECORD_SEC:
@@ -722,7 +722,7 @@ class WakeListener:
             os.close(devnull)
 
     def _device_watch(self):
-        """Follow the system default mic — reopen on AirPods connect/remove."""
+        """Follow the system default mic: reopen on AirPods connect/remove."""
         current = self._default_input_name()
         while True:
             time.sleep(2.0)
@@ -794,7 +794,7 @@ class WakeListener:
                 self._last_activity = time.time()
                 self.cues.play("start")
                 self.hud.listening()
-                print(f"\n● wake heard — dictating (say “{self.stop_phrase}” "
+                print(f"\n● wake heard: dictating (say “{self.stop_phrase}” "
                       f"to stop)", flush=True)
                 if after.strip():
                     self._insert(after)
@@ -809,7 +809,7 @@ class WakeListener:
                 self.dictating = False
                 self.cues.play("stop")
                 self.hud.hide()
-                print("  (stop heard — back to idle)", flush=True)
+                print("  (stop heard: back to idle)", flush=True)
             else:
                 self._insert(text)
 
@@ -831,7 +831,7 @@ class WakeListener:
                 self.dictating = False
                 self.cues.play("stop")
                 self.hud.hide()
-                print(f"  ({self.inactivity:.0f}s inactivity — back to idle)",
+                print(f"  ({self.inactivity:.0f}s inactivity: back to idle)",
                       flush=True)
 
 
@@ -919,9 +919,9 @@ def run_event_loop(controller, keycode, airpods_mode="auto"):
                     now = airpods_connected()
                     if now != state["enabled"]:
                         state["enabled"] = now
-                        print("🎧 AirPods connected — squeeze a stem to "
+                        print("🎧 AirPods connected: squeeze a stem to "
                               "dictate." if now else
-                              "🎧 AirPods disconnected — stem control off.",
+                              "🎧 AirPods disconnected: stem control off.",
                               flush=True)
             threading.Thread(target=poll_airpods, daemon=True).start()
     # Flash the HUD at startup: visual confirmation that the overlay works
@@ -946,7 +946,7 @@ def _ax_trusted_fresh():
     """Accessibility status read in a fresh subprocess.
 
     AXIsProcessTrusted() caches its result for the lifetime of a process, so
-    a grant made *after* launch is never seen by the running process — the
+    a grant made *after* launch is never seen by the running process: the
     onboarding poll would loop forever. A short-lived child reads the current
     TCC state each time, so the poll actually notices the grant."""
     code = ("from ApplicationServices import AXIsProcessTrusted;"
@@ -1075,7 +1075,7 @@ def run_wake_mode(args):
     clean_model = None if args.raw else args.clean_model
     if clean_model and not cleanup_available(clean_model):
         print(f"NOTE: cleanup model '{clean_model}' isn't reachable via "
-              f"Ollama — inserting raw transcripts this session.", flush=True)
+              f"Ollama: inserting raw transcripts this session.", flush=True)
         clean_model = None
 
     WakeListener(transcriber, inserter, cues, hud, clean_model,
@@ -1083,7 +1083,7 @@ def run_wake_mode(args):
                  level_sink=level)
 
     mode = f"clean ({clean_model})" if clean_model else "raw"
-    print(f"\nlistening [{mode}] — say “{args.wake}” to start dictating, "
+    print(f"\nlistening [{mode}]: say “{args.wake}” to start dictating, "
           f"“{args.stop_phrase}” to stop.\n        Text lands in whatever "
           f"app is focused. Ctrl-C quits.", flush=True)
     hud.flash(f"say “{args.wake}” to dictate", seconds=3.0)
@@ -1149,9 +1149,9 @@ def hud_test():
                       + ("  <- HUD is on this display" if inside else ""))
             print("panel fully inside a display: "
                   + ("YES ✅" if on_a_display else
-                     "NO ❌ — this is the bug, panel is in dead space"))
+                     "NO ❌: this is the bug, panel is in dead space"))
     hud.hide()
-    print("hud test done — a small black pill should have shown at the "
+    print("hud test done: a small black pill should have shown at the "
           "top-center of the display your mouse is on: a text message, "
           "then a live waveform, then a ripple.")
 
@@ -1179,7 +1179,7 @@ def main():
                     help="disable the floating waveform overlay")
     ap.add_argument("--airpods", dest="airpods", action="store_true",
                     default=None,
-                    help="force AirPods stem control on (default: auto — on "
+                    help="force AirPods stem control on (default: auto, on "
                          "when AirPods are detected)")
     ap.add_argument("--no-airpods", dest="airpods", action="store_false",
                     help="disable AirPods stem control")
@@ -1226,7 +1226,7 @@ def main():
     try:
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
     except OSError:
-        sys.exit("another dictate.py is already running — quit it first "
+        sys.exit("another dictate.py is already running: quit it first "
                  "(Ctrl-C in its terminal), or use that one.")
 
     if args.wake:             # always-listen, hands-free, no keys
@@ -1243,7 +1243,7 @@ def main():
     clean_model = None if args.raw else args.clean_model
     if clean_model and not cleanup_available(clean_model):
         print(f"NOTE: cleanup model '{clean_model}' isn't reachable via "
-              f"Ollama — inserting raw transcripts this session. Start "
+              f"Ollama: inserting raw transcripts this session. Start "
               f"Ollama (`ollama serve`) and `ollama pull {clean_model}` to "
               f"enable cleanup, or pass --raw to silence this.", flush=True)
         clean_model = None
@@ -1252,7 +1252,7 @@ def main():
 
     # AirPods stem control is OFF by default: macOS captures the AirPods Pro
     # stem squeeze for its own mic/call control and never delivers it to us
-    # as a media key (confirmed by testing — you just get "Cannot Control
+    # as a media key (confirmed by testing: you just get "Cannot Control
     # Mic" popups). --airpods still forces the attempt for experimentation.
     if args.airpods is True:
         airpods_mode = "on"
@@ -1261,14 +1261,14 @@ def main():
 
     mode = f"clean ({clean_model})" if clean_model else "raw"
     key_name = "Fn" if args.key == "fn" else "Right-Command"
-    print(f"\nready [{mode}] — hold {key_name} and speak, release to insert."
+    print(f"\nready [{mode}]: hold {key_name} and speak, release to insert."
           f"\n        double-tap {key_name} for hands-free (stops after "
           f"{args.silence:.0f}s of silence or another tap).", flush=True)
     if airpods_mode != "off":
         detected = airpods_mode == "on" or airpods_connected()
         print(f"        AirPods stem control: {airpods_mode}"
-              + (" — AirPods detected, squeeze a stem to dictate."
-                 if detected else " — will activate when AirPods connect."),
+              + (". AirPods detected, squeeze a stem to dictate."
+                 if detected else ". Will activate when AirPods connect."),
               flush=True)
     print("        Esc cancels. Ctrl-C quits.", flush=True)
     run_event_loop(controller, keycode, airpods_mode=airpods_mode)

@@ -2,7 +2,7 @@
 
 <p align="center">
   <b>Private, local push-to-talk dictation for macOS.</b><br>
-  Hold a key, speak, release — your words appear in whatever app you're using.<br>
+  Hold a key, speak, release. Your words appear in whatever app you're using.<br>
   No cloud, no subscription, no account. Everything runs on your Mac.
 </p>
 
@@ -16,20 +16,20 @@
 
 ---
 
-mumble is a free, open-source alternative to Wispr Flow, Willow Voice, and superwhisper. It uses NVIDIA's **Parakeet** speech model running on Apple Silicon's Neural Engine for near-instant transcription, and an optional local LLM to clean up your rambling into polished text — all without a single byte leaving your machine.
+mumble is a free, open-source alternative to Wispr Flow, Willow Voice, and superwhisper. It uses NVIDIA's **Parakeet** speech model running on Apple Silicon's Neural Engine for near-instant transcription, and an optional local LLM to clean up your rambling into polished text, all without a single byte leaving your machine.
 
 Built for Apple Silicon (M1 or newer). **$0 forever.**
 
 ## Features
 
-- 🎙️ **Hold-to-talk** — hold `Fn`, speak, release. Text lands at your cursor in ~half a second.
-- 🧹 **Automatic cleanup** — a local LLM strips filler words ("um", "uh"), fixes punctuation, and turns spoken lists ("first… second… third…") into clean numbered lists.
-- 🙌 **Hands-free mode** — double-tap `Fn` and just talk; it stops automatically when you go quiet.
-- 🗣️ **Wake-word mode** — say *"start dictation"*, talk, say *"stop dictation"*. No keys at all — dictate from across the room.
-- 〰️ **Live waveform** — an elegant floating pill shows it's listening, with audible start/stop cues so you know it's working without looking.
-- 🎧 **AirPods aware** — auto-switches to your AirPods mic when you put them on, even mid-session.
-- 🔒 **100% local & private** — Parakeet + your LLM run on-device. No network calls, no telemetry, no accounts.
-- ⚡ **Fast** — ~0.4s to transcribe 10 seconds of speech on an M1 Pro; the model stays warm in memory.
+- 🎙️ **Hold-to-talk:** hold `Fn`, speak, release. Text lands at your cursor in ~half a second.
+- 🧹 **Automatic cleanup:** a local LLM strips filler words ("um", "uh"), fixes punctuation, and turns spoken lists ("first… second… third…") into clean numbered lists.
+- 🙌 **Hands-free mode:** double-tap `Fn` and just talk; it stops automatically when you go quiet.
+- 🗣️ **Wake-word mode:** say *"start dictation"*, talk, say *"stop dictation"*. No keys at all, dictate from across the room.
+- 〰️ **Live waveform:** an elegant floating pill shows it's listening, with audible start/stop cues so you know it's working without looking.
+- 🎧 **AirPods aware:** auto-switches to your AirPods mic when you put them on, even mid-session.
+- 🔒 **100% local & private:** Parakeet + your LLM run on-device. No network calls, no telemetry, no accounts.
+- ⚡ **Fast:** ~0.4s to transcribe 10 seconds of speech on an M1 Pro; the model stays warm in memory.
 
 ## Install
 
@@ -60,7 +60,7 @@ On first launch mumble will prompt you for three macOS permissions and walk you 
 
 ```bash
 ./dictate.sh                       # hold Fn to dictate (with cleanup)
-./dictate.sh --raw                 # skip LLM cleanup — fastest, raw transcript
+./dictate.sh --raw                 # skip LLM cleanup (fastest, raw transcript)
 ./dictate.sh --wake "start dictation"   # hands-free wake-word mode
 ./dictate.sh --key rcmd            # use Right-Command instead of Fn
 ```
@@ -107,9 +107,9 @@ On first launch mumble will prompt you for three macOS permissions and walk you 
                                     Pasteboard + synthetic ⌘V into focused app
 ```
 
-- **Speech-to-text:** [Parakeet TDT 0.6B](https://huggingface.co/mlx-community/parakeet-tdt-0.6b-v2) via [parakeet-mlx](https://github.com/senstella/parakeet-mlx) — runs on the Neural Engine, excellent English accuracy, punctuation included.
+- **Speech-to-text:** [Parakeet TDT 0.6B](https://huggingface.co/mlx-community/parakeet-tdt-0.6b-v2) via [parakeet-mlx](https://github.com/senstella/parakeet-mlx): runs on the Neural Engine, excellent English accuracy, punctuation included.
 - **Cleanup:** any local [Ollama](https://ollama.com) model (default `qwen2.5:7b`) rewrites the transcript with a fixed prompt. Fully optional and offline.
-- **Insertion:** copies text to the pasteboard, sends a synthetic ⌘V, then restores your previous clipboard — works in virtually every app.
+- **Insertion:** copies text to the pasteboard, sends a synthetic ⌘V, then restores your previous clipboard. Works in virtually every app.
 
 ## Permissions
 
@@ -127,12 +127,12 @@ Wake-word mode (`--wake`) needs only Microphone + Accessibility.
 
 ## Privacy
 
-mumble makes **zero network connections** during use. The speech model is downloaded once from Hugging Face at install time; after that, your audio and text never leave the machine. There's no telemetry, no analytics, and no account. Read the ~1,000 lines of `dictate.py` yourself — that's the whole thing.
+mumble makes **zero network connections** during use. The speech model is downloaded once from Hugging Face at install time; after that, your audio and text never leave the machine. There's no telemetry, no analytics, and no account. Read the ~1,000 lines of `dictate.py` yourself; that's the whole thing.
 
 ## Limitations
 
 - **Apple Silicon only.** Parakeet-mlx needs the Neural Engine. Intel Macs aren't supported.
-- **The AirPods stem can't trigger dictation.** macOS reserves the AirPods Pro stem squeeze for its own mic/call control and never delivers it to third-party apps. Use AirPods for the *mic*; trigger with the keyboard or a wake word. (The AirPods *stem-as-button* feature is a macOS limitation, not a bug here — [details](#).)
+- **The AirPods stem can't trigger dictation.** macOS reserves the AirPods Pro stem squeeze for its own mic/call control and never delivers it to third-party apps. Use AirPods for the *mic*; trigger with the keyboard or a wake word. (The AirPods *stem-as-button* feature is a macOS limitation, not a bug here; see [details](#).)
 - **Not on the Mac App Store.** Global key detection is incompatible with the App Store sandbox, so mumble is distributed directly. This is normal for this class of app.
 - **Cleanup needs Ollama running.** Without it, mumble inserts the raw transcript and tells you so.
 

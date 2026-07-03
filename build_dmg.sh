@@ -1,5 +1,5 @@
 #!/bin/zsh
-# Build dist/mumble.dmg — a drag-to-Applications disk image containing
+# Build dist/mumble.dmg: a drag-to-Applications disk image containing
 # mumble.app, a self-installing wrapper around the Python source.
 #
 # On first launch the app copies its bundled source to
@@ -7,7 +7,7 @@
 # (venv + deps + model download), then starts dictation. Later launches
 # skip straight to dictation.
 #
-# NOTE: without an Apple Developer ID the app is unsigned — downloaders
+# NOTE: without an Apple Developer ID the app is unsigned. Downloaders
 # must right-click → Open the first time (see README).
 set -e
 cd "$(dirname "$0")"
@@ -65,7 +65,7 @@ cat > "$BOOT" <<'BOOTEOF'
 #!/bin/zsh
 cd "$HOME/Library/Application Support/mumble"
 if [[ ! -d .venv ]]; then
-  echo "First run — installing mumble (a few minutes) ..."
+  echo "First run: installing mumble (a few minutes) ..."
   ./install.sh
 fi
 exec ./dictate.sh
@@ -80,10 +80,10 @@ mkdir -p "$STAGING"
 cp -R "$APP" "$STAGING/"
 ln -s /Applications "$STAGING/Applications"
 cat > "$STAGING/READ ME FIRST.txt" <<'EOF'
-mumble — local, private dictation for macOS (Apple Silicon)
+mumble: local, private dictation for macOS (Apple Silicon)
 
 1. Drag mumble.app into Applications.
-2. IMPORTANT — the app is unsigned, so the FIRST time:
+2. IMPORTANT: the app is unsigned, so the FIRST time:
    right-click mumble.app → Open → Open.
    (Double-clicking will show a warning instead.)
 3. A Terminal window opens, installs everything on first run
